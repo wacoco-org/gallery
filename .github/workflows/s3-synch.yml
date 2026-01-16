@@ -1,0 +1,27 @@
+name: Upload one image to S3
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "s3/example.png"
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload s3/example.png to S3 bucket under s3/example.png
+        run: |
+          aws s3 cp "s3/example.png" "s3://${{ secrets.S3_BUCKET }}/s3/example.png" \
+            --content-type "image/png" \
+            --cache-control "public, max-age=31536000, immutable"
