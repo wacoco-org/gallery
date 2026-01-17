@@ -20,9 +20,10 @@ function isImage(name) {
     return IMAGE_EXTS.has(path.extname(name).toLowerCase());
 }
 
-function walk(dirAbs, relBase) {
+function walk(dirAbs, relBase, app) {
     const out = [];
-    const entries = fs.readdirSync(dirAbs, { withFileTypes: true })
+    const entries = fs
+        .readdirSync(dirAbs, { withFileTypes: true })
         .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const e of entries) {
@@ -30,13 +31,14 @@ function walk(dirAbs, relBase) {
         const rel = path.posix.join(relBase, e.name);
 
         if (e.isDirectory()) {
-            out.push(...walk(abs, rel));
+            out.push(...walk(abs, rel, app));
             continue;
         }
 
         if (e.isFile() && isImage(e.name)) {
-            const key = `${KEY_PREFIX}/${rel}`; // e.g. s3/app1/foo.png
+            const key = `${KEY_PREFIX}/${rel}`;
             out.push({
+                app,
                 key,
                 url: `${PUBLIC_BASE_URL}/${key}`,
             });
@@ -58,21 +60,36 @@ function main() {
 
     fs.mkdirSync(OUT_DIR, { recursive: true });
 
-    const topFolders = fs.readdirSync(ROOT, { withFileTypes: true })
+    const index = [];
+
+    const topFolders = fs
+        .readdirSync(ROOT, { withFileTypes: true })
         .filter((e) => e.isDirectory())
         .map((e) => e.name)
         .sort((a, b) => a.localeCompare(b));
 
     for (const folder of topFolders) {
         const abs = path.join(ROOT, folder);
-        const files = walk(abs, folder); // include folder name in rel path
-        fs.writeFileSync(
-            path.join(OUT_DIR, `${folder}.json`),
-            JSON.stringify(files, null, 2),
-            "utf8"
-        );
-        console.log(`generated-indexes/${folder}.json (${files.length} files)`);
+        index.push(...walk(abs, folder, folder));
     }
+
+    const output = `// AUTO-GENERATED — DO NOT EDIT
+// Generated at ${new Date().toISOString()}
+
+const IMAGE_INDEX = ${JSON.stringify(index, null, 2)};
+
+export default IMAGE_INDEX;
+`;
+
+    fs.writeFileSync(
+        path.join(OUT_DIR, "index.js"),
+        output,
+        "utf8"
+    );
+
+    console.log(
+        `generated-indexes/index.js written (${index.length} entries)`
+    );
 }
 
 main();
