@@ -21,7 +21,7 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
           # Optional: if you serve via CloudFront/custom domain:
           # PUBLIC_BASE_URL: https://cdn.example.com
-        run: node scripts/build-index.js
+        run: node scripts/build-folder-indexes.cjs
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
