@@ -7,17 +7,19 @@ jobs:
   delete:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Delete S3 objects for files removed in this push
+      - name: Delete S3 objects removed in this push (compare previous tree to new)
         env:
           BUCKET: ${{ secrets.S3_BUCKET }}
           BEFORE: ${{ github.event.before }}
@@ -25,7 +27,18 @@ jobs:
         run: |
           set -euo pipefail
 
-          deleted=$(git diff --name-status "$BEFORE" "$AFTER" -- '/**' | awk '$1=="D"{print $2}')
+          # If BEFORE is missing/invalid (rare), fall back to previous commit
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            BEFORE="$(git rev-parse "$AFTER^")"
+          fi
+
+          echo "Diff range: $BEFORE..$AFTER"
+
+          # Files deleted anywhere in the push range under s3/
+          deleted=$(
+            git diff --name-status "$BEFORE" "$AFTER" -- 's3/**' \
+              | awk '$1=="D"{print $2}'
+          )
 
           if [ -z "$deleted" ]; then
             echo "No deletions to process."
@@ -34,5 +47,5 @@ jobs:
 
           echo "$deleted" | while read -r path; do
             echo "Deleting s3://$BUCKET/$path"
-            aws s3 rm "s3://$BUCKET/$path"
+            aws s3 rm "s3://$BUCKET/$path" || true
           done
