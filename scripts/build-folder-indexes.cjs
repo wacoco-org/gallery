@@ -79,11 +79,8 @@ function main() {
         return (a.key || "").localeCompare(b.key || "");
     });
 
-    const output = `// AUTO-GENERATED — DO NOT EDIT
-// Generated at ${new Date().toISOString()}
-
+    const output = `
 const IMAGE_INDEX = ${JSON.stringify(index, null, 2)};
-
 export default IMAGE_INDEX;
 `;
 
