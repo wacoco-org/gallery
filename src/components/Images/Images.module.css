@@ -38,3 +38,82 @@
     object-fit: cover;
     display: block;
 }
+
+.imageButton {
+    all: unset;
+    cursor: pointer;
+    display: block;
+}
+
+.detail {
+    display: grid;
+    gap: 16px;
+}
+
+.detail__back {
+    width: fit-content;
+}
+
+.detail__header {
+    display: grid;
+    gap: 6px;
+}
+
+.detail__title {
+    margin: 0;
+}
+
+.detail__sub {
+    display: flex;
+    gap: 12px;
+    opacity: 0.8;
+    flex-wrap: wrap;
+}
+
+.detail__meta {
+    display: grid;
+    gap: 6px;
+}
+
+.detail__desc {
+    margin: 8px 0 0;
+    opacity: 0.9;
+}
+
+.detail__sizes {
+    display: grid;
+    gap: 16px;
+}
+
+.detail__card {
+    display: grid;
+    gap: 8px;
+}
+
+.detail__label {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.imgSmall {
+    width: 240px;
+    max-width: 100%;
+    height: auto;
+}
+
+.imgMedium {
+    width: 480px;
+    max-width: 100%;
+    height: auto;
+}
+
+.imgLarge {
+    width: 760px;
+    max-width: 100%;
+    height: auto;
+}
+
+.imgFull {
+    width: 100%;
+    height: auto;
+}
