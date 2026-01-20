@@ -1,0 +1,22 @@
+name: S3 Orchestrator
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "s3/**"
+
+jobs:
+  upload:
+    uses: ./.github/workflows/s3-upload.yml
+    secrets: inherit
+
+  delete:
+    needs: upload
+    uses: ./.github/workflows/s3-delete.yml
+    secrets: inherit
+
+  indexes:
+    needs: [upload, delete]
+    uses: ./.github/workflows/s3-folder-indexes.yml
+    secrets: inherit
