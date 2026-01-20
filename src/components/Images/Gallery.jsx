@@ -1,48 +1,77 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Images from "./Images";
 
-const INDEX_URL = "https://hansik-dummy-images.s3.eu-north-1.amazonaws.com/index.json";
+const INDEX_URL =
+    "https://hansik-dummy-images.s3.eu-north-1.amazonaws.com/index.js";
+const GLOBAL_NAME = "__IMAGE_INDEX__";
 
-export default function Gallery({pollMs = 15000, fastFirstLoad = true, onlyIfChanged = true,}) {
-
+export default function Gallery({
+                                    pollMs = 15000,
+                                    fastFirstLoad = true,
+                                    onlyIfChanged = true,
+                                }) {
     const [items, setItems] = useState([]);
     const [error, setError] = useState(null);
 
     const lastEtagRef = useRef(null);
     const lastModifiedRef = useRef(null);
 
-    async function fetchIndex({ useCacheBuster = false } = {}) {
+    async function loadIndexViaScript({ useCacheBuster = false } = {}) {
         const url = useCacheBuster ? `${INDEX_URL}?t=${Date.now()}` : INDEX_URL;
 
-        // lightweight check first
+        // HEAD change-detection (optional)
         if (onlyIfChanged) {
             try {
-                const head = await fetch(url, { method: "HEAD" });
+                const head = await fetch(url, { method: "HEAD", cache: "no-store" });
                 if (head.ok) {
                     const etag = head.headers.get("etag");
                     const lastMod = head.headers.get("last-modified");
 
-                    const sameEtag = etag && lastEtagRef.current && etag === lastEtagRef.current;
+                    const sameEtag =
+                        etag && lastEtagRef.current && etag === lastEtagRef.current;
                     const sameLastMod =
-                        lastMod && lastModifiedRef.current && lastMod === lastModifiedRef.current;
+                        lastMod &&
+                        lastModifiedRef.current &&
+                        lastMod === lastModifiedRef.current;
 
                     if (sameEtag || sameLastMod) return; // no change
+
+                    if (etag) lastEtagRef.current = etag;
+                    if (lastMod) lastModifiedRef.current = lastMod;
                 }
             } catch {
-                // ignore HEAD failures; fall back to GET
+                // ignore; still try to load script
             }
         }
 
-        const res = await fetch(`${INDEX_URL}?t=${Date.now()}`);
-        if (!res.ok) throw new Error(`Failed to load index (${res.status})`);
+        // Clear previous value so we can detect a bad load
+        delete window[GLOBAL_NAME];
 
-        const etag = res.headers.get("etag");
-        const lastMod = res.headers.get("last-modified");
-        if (etag) lastEtagRef.current = etag;
-        if (lastMod) lastModifiedRef.current = lastMod;
+        await new Promise((resolve, reject) => {
+            const s = document.createElement("script");
+            s.src = url;
+            s.async = true;
 
-        const data = await res.json();
-        setItems(Array.isArray(data) ? data : []);
+            s.onload = () => {
+                s.remove();
+                resolve();
+            };
+            s.onerror = () => {
+                s.remove();
+                reject(new Error(`Failed to load script: ${INDEX_URL}`));
+            };
+
+            document.head.appendChild(s);
+        });
+
+        const data = window[GLOBAL_NAME];
+        if (!Array.isArray(data)) {
+            throw new Error(
+                `index.js loaded but window.${GLOBAL_NAME} was not an array (did you generate window.${GLOBAL_NAME} = [...] ?) `
+            );
+        }
+
+        setItems(data);
         setError(null);
     }
 
@@ -52,7 +81,7 @@ export default function Gallery({pollMs = 15000, fastFirstLoad = true, onlyIfCha
 
         const tick = async (first = false) => {
             try {
-                await fetchIndex({ useCacheBuster: first && fastFirstLoad });
+                await loadIndexViaScript({ useCacheBuster: first && fastFirstLoad });
             } catch (e) {
                 if (!cancelled) setError(e?.message || "Failed to load index");
             } finally {
@@ -68,7 +97,6 @@ export default function Gallery({pollMs = 15000, fastFirstLoad = true, onlyIfCha
         };
     }, [pollMs, fastFirstLoad, onlyIfChanged]);
 
-    // pass-through, but keep it stable
     const value = useMemo(() => items, [items]);
 
     return (

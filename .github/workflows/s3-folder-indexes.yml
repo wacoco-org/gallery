@@ -19,8 +19,6 @@ jobs:
         env:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
-          # Optional: if you serve via CloudFront/custom domain:
-          # PUBLIC_BASE_URL: https://cdn.example.com
         run: node scripts/build-folder-indexes.cjs
 
       - name: Configure AWS credentials
@@ -32,6 +30,6 @@ jobs:
 
       - name: Upload index.js to bucket root
         run: |
-          aws s3 cp generated-indexes/index.js "s3://${{ secrets.S3_BUCKET }}/index.json" \
+          aws s3 cp generated-indexes/index.js "s3://${{ secrets.S3_BUCKET }}/index.js" \
             --content-type "application/javascript" \
             --cache-control "no-cache"
